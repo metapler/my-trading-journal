@@ -1,0 +1,251 @@
+@import "tailwindcss";
+
+/*
+ * REDESIGN.md §6 — design tokens (baseline, obsidian/gold).
+ * Single Tailwind v4 import; no mixed major-version config patterns.
+ */
+:root {
+  --bg: #07080a;
+  --surface: #0c0e12;
+  --surface-raised: #12161c;
+  --surface-hover: #191e26;
+  --text: #e8e6df;
+  --text-secondary: #b4b6bc;
+  --text-muted: #9297a1;
+  --border: #282d35;
+  --border-accent: rgba(212, 175, 55, 0.22);
+  --gold: #d4af37;
+  --positive: #2ee59d;
+  --negative: #ff5c7a;
+  --focus: #e8c85b;
+  --font-sans: ui-sans-serif, system-ui, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --radius-panel: 16px;
+  --radius-control: 10px;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100svh;
+}
+
+body {
+  background-color: var(--bg);
+  /* Static, very subtle radial glow. No decorative canvas or grain over text/chart. */
+  background-image:
+    radial-gradient(1200px 600px at 20% -10%, rgba(212, 175, 55, 0.06), transparent 60%),
+    radial-gradient(1000px 500px at 90% 0%, rgba(46, 229, 157, 0.04), transparent 60%);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-sans);
+  /* §6 body 14–16px, line-height 1.5 */
+  font-size: 15px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* All figures use tabular numerals; no rolling-number animation. */
+.tnum,
+table,
+td,
+th {
+  font-variant-numeric: tabular-nums;
+}
+
+.mono-contract,
+code,
+kbd,
+samp {
+  font-family: var(--font-mono);
+}
+
+/* Visible keyboard focus, never hidden behind sticky header. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: rgba(212, 175, 55, 0.35);
+  color: #fff;
+}
+
+/* --- Panels (§6: solid/subtle surface, 1px border, restrained gold glint) --- */
+.panel {
+  position: relative;
+  background-color: var(--surface);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  min-width: 0;
+}
+
+.panel-glint::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* --- Buttons (§6: warm off-white primary, gold reserved for selected/accents) --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  padding: 10px 16px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.btn-primary {
+  background-color: #ece7d8;
+  color: #1a1405;
+}
+
+.btn-primary:hover {
+  background-color: #f5f0e0;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.btn-secondary:hover {
+  background-color: var(--surface-hover);
+}
+
+/* --- Sidebar nav (§4: subtle bg + gold indicator + aria-current) --- */
+.nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  font-size: 14px;
+  color: var(--text-secondary);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.nav-link:hover {
+  background-color: var(--surface-hover);
+  color: var(--text);
+}
+
+.nav-link[aria-current="page"] {
+  background-color: rgba(212, 175, 55, 0.1);
+  color: var(--text);
+}
+
+.nav-link[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 999px;
+  background-color: var(--gold);
+}
+
+/* Rail variant: centered icons, gold dot for active. */
+.nav-rail-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.nav-rail-link:hover {
+  background-color: var(--surface-hover);
+  color: var(--text);
+}
+
+.nav-rail-link[aria-current="page"] {
+  background-color: rgba(212, 175, 55, 0.12);
+  color: var(--text);
+}
+
+.nav-rail-link[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background-color: var(--gold);
+}
+
+/* Skip link for keyboard users. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background-color: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-control);
+  padding: 10px 16px;
+  font-size: 14px;
+}
+
+.skip-link:focus {
+  left: 12px;
+  top: 12px;
+}
+
+/* PnL helpers: mint/rose + sign (never color-only; signs rendered in markup). */
+.text-profit {
+  color: var(--positive);
+}
+
+.text-loss {
+  color: var(--negative);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

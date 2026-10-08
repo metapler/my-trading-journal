@@ -1,0 +1,201 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  runtime             = "nodejs"
+  moduleFormat        = "cjs"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TransactionType {
+  BUY
+  SELL
+}
+
+enum AssetStatus {
+  ACTIVE
+  CLOSED
+  WATCHLIST
+}
+
+model User {
+  id           String   @id @default(cuid(2))
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assets   Asset[]
+  sessions Session[]
+  portfolioSnapshots PortfolioSnapshot[]
+  historyState PortfolioHistoryState?
+
+  @@map("users")
+}
+
+model Session {
+  id         String   @id @default(cuid(2))
+  userId     String
+  tokenHash  String   @unique
+  csrfToken  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Asset {
+  id                     String      @id @default(cuid(2))
+  userId                 String
+  name                   String
+  symbol                 String
+  chain                  String
+  contractAddress        String?
+  provider               String?
+  providerAssetId        String?
+  preferredPriceProvider String?
+  dexId                  String?
+  pairAddress            String?
+  quoteSymbol            String?
+  imageUrl               String?
+  status                 AssetStatus @default(ACTIVE)
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions   Transaction[]
+  journal        Journal?
+  watchlist      Watchlist?
+  priceSnapshots PriceSnapshot[]
+
+  @@unique([userId, chain, contractAddress])
+  @@unique([userId, provider, providerAssetId])
+  @@index([userId])
+  @@index([symbol])
+  @@index([status])
+  @@map("assets")
+}
+
+model Transaction {
+  id            String          @id @default(cuid(2))
+  assetId       String
+  type          TransactionType
+  quantity      Decimal         @db.Decimal(36, 18)
+  pricePerToken Decimal         @db.Decimal(36, 18)
+  fee           Decimal         @default(0) @db.Decimal(36, 18)
+  executedAt    DateTime
+  note          String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([assetId, executedAt])
+  @@index([executedAt])
+  @@map("transactions")
+}
+
+model Journal {
+  id              String   @id @default(cuid(2))
+  assetId         String   @unique
+  thesis          String?
+  entryReason     String?
+  invalidation    String?
+  target          String?
+  riskLevel       String?
+  strategy        String?
+  tags            String[] @default([])
+  postTradeReview String?
+  exitReason      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@map("journals")
+}
+
+model Watchlist {
+  id               String   @id @default(cuid(2))
+  assetId          String   @unique
+  targetEntryPrice Decimal? @db.Decimal(36, 18)
+  note             String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@map("watchlists")
+}
+
+model PriceSnapshot {
+  id         String   @id @default(cuid(2))
+  assetId    String
+  price      Decimal  @db.Decimal(36, 18)
+  marketCap  Decimal? @db.Decimal(36, 2)
+  fdv        Decimal? @db.Decimal(36, 2)
+  liquidity  Decimal? @db.Decimal(36, 2)
+  volume24h  Decimal? @db.Decimal(36, 2)
+  capturedAt DateTime @default(now())
+  source     String
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([assetId, capturedAt])
+  @@index([capturedAt])
+  @@map("price_snapshots")
+}
+
+enum SnapshotQuality {
+  complete
+  stale
+  partial
+  unavailable
+}
+
+// REDESIGN §9.2 — observed portfolio snapshots. One row per owner per
+// 5-minute bucket, written by the host snapshot job (never by frontend
+// polling). No backfill: history starts when observation starts.
+model PortfolioSnapshot {
+  id                 String          @id @default(cuid(2))
+  userId             String
+  capturedAt         DateTime        // actual observation time, UTC
+  bucketStart        DateTime        // floored 5-min bucket, UTC — dedup key
+  portfolioValueUsd  Decimal?        @db.Decimal(36, 2) // full total; null when incomplete
+  knownValueUsd      Decimal         @db.Decimal(36, 2) // subtotal of priced assets
+  activeCostBasisUsd Decimal         @db.Decimal(36, 2) // remaining cost basis, ledger-known
+  quality            SnapshotQuality
+  pricedAssetCount   Int
+  totalAssetCount    Int // open positions (qty > 0)
+  oldestPriceAt      DateTime? // oldest quote actually used
+  ledgerRevision     Int // history-state revision at capture
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bucketStart])
+  @@index([userId, capturedAt])
+  @@map("portfolio_snapshots")
+}
+
+// Per-owner ledger revision + invalidation marker for observed history.
+// Bumped on every transaction create/update/delete; observed snapshots are
+// never recomputed, so edits mark affected history instead of rewriting it.
+model PortfolioHistoryState {
+  userId          String    @id
+  ledgerRevision  Int       @default(0)
+  invalidatedFrom DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("portfolio_history_state")
+}
